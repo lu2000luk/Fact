@@ -3,6 +3,7 @@ package com.lu2000luk.fact;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.Util;
 import net.minecraft.commands.CommandSourceStack;
@@ -17,14 +18,14 @@ import java.awt.*;
 import java.util.List;
 
 public class FactCommand {
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher){
-        dispatcher.register(Commands.literal("fact").then(Commands.argument("number", IntegerArgumentType.integer(1, 10))
-                .executes(commandContext -> execute(commandContext, IntegerArgumentType.getInteger(commandContext, "number")))
-        ));
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("fact").then(Commands.argument("action", StringArgumentType.word())
+                .executes(commandContext -> execute(commandContext, StringArgumentType.getString(commandContext, "action")))));
     }
-    private static int execute(CommandContext<CommandSourceStack> command, int arg){
-        if(command.getSource().getEntity() instanceof Player player){
-            player.displayClientMessage(Component.literal("Fact >> Hello, " + player.getName()), false);
+
+    private static int execute(CommandContext<CommandSourceStack> command, String arg) {
+        if (command.getSource().getEntity() instanceof Player player) {
+            player.sendSystemMessage(Component.literal("Fact >> Hello, " + player.getStringUUID()));
         }
         return Command.SINGLE_SUCCESS;
     }
