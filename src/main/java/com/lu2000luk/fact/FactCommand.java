@@ -138,6 +138,8 @@ public class FactCommand {
     }
 
     private static int adminLeave(CommandContext<CommandSourceStack> command) {
+        // WARNING: Doesn't work lol (Also code is ass).
+        
         Player player = getPlayer(command);
         if (player != null) {
             FactTeam team = getPlayerTeam(player);
