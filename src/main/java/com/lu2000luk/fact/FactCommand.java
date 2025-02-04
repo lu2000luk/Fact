@@ -21,6 +21,7 @@ public class FactCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("fact")
                 .requires(cs -> cs.hasPermission(0))
+                .executes(FactCommand::execute)
                 .then(
                         Commands.literal("admin")
                                 .requires(cs -> cs.hasPermission(4))
@@ -43,8 +44,13 @@ public class FactCommand {
                 ));
     }
 
-    private static int execute(CommandContext<CommandSourceStack> command, String arg) {
-        if (command.getSource().getEntity() instanceof Player player) {
+    private static Player getPlayer(CommandContext<CommandSourceStack> command) {
+        return command.getSource().getEntity() instanceof Player player ? player : null;
+    }
+
+    private static int execute(CommandContext<CommandSourceStack> command) {
+        Player player = getPlayer(command);
+        if (player != null) {
             player.sendSystemMessage(Component.literal("Fact >> Hello, " + player.getStringUUID()));
         }
         return Command.SINGLE_SUCCESS;
