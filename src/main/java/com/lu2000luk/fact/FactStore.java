@@ -1,5 +1,6 @@
 package com.lu2000luk.fact;
 
+import com.google.gson.reflect.TypeToken;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.fml.loading.FMLPaths;
 
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -16,13 +18,11 @@ public class FactStore {
     public static List<FactTeam> cachedTeams = null;
 
     public static File getFile() {
-        LogUtils.getLogger().info("CALL TRACE: GETTING FILE");
         Path gameDir = FMLPaths.CONFIGDIR.get();
         return new File(gameDir.toFile(), "fact_teams.json");
     }
 
     public static String readFile(File file) throws IOException {
-        LogUtils.getLogger().info("CALL TRACE: READING FILE");
         if (file.createNewFile()) {
             LogUtils.getLogger().info("Created new file from READ: {}", file.getPath());
             writeFile(file, "[]");
@@ -36,7 +36,6 @@ public class FactStore {
     }
 
     public static void writeFile(File file, String content) throws IOException {
-        LogUtils.getLogger().info("CALL TRACE: WRITING FILE {} with: {}", file.getPath(), content);
         if (file.createNewFile()) {
             LogUtils.getLogger().info("Created new file from WRITE: {}", file.getPath());
             writeFile(file, "[]");
@@ -48,30 +47,26 @@ public class FactStore {
         }
     }
 
-    public static FactTeam[] serialize(String content) {
-        return Fact.gson.fromJson(content, FactTeam[].class);
+    public static List<FactTeam> serialize(String content) {
+        return Fact.gson.fromJson(content, new TypeToken<List<FactTeam>>() {}.getType());
     }
 
-    public static String deserialize(FactTeam[] teams) {
+    public static String deserialize(List<FactTeam> teams) {
         return Fact.gson.toJson(teams);
     }
 
     public static List<FactTeam> getTeams() {
         try {
-            FactTeam[] teams = serialize(readFile(getFile()));
-            if (teams != null) {
-                return Arrays.asList(teams);
-            } else {
-                LogUtils.getLogger().error("Failed to get teams!");
-                return Arrays.asList(new FactTeam[0]);
-            }
+            FactTeam[] teams = serialize(readFile(getFile())).toArray(new FactTeam[0]);
+            return new ArrayList<>(Arrays.asList(teams));
         } catch (IOException e) {
             LogUtils.getLogger().error("Failed to get teams", e);
         }
-        return Arrays.asList(new FactTeam[0]);
+        return List.of();
     }
 
-    public static void setTeams(FactTeam[] teams) {
+
+    public static void setTeams(List<FactTeam> teams) {
         try {
             writeFile(getFile(), deserialize(teams));
             updateCache();
