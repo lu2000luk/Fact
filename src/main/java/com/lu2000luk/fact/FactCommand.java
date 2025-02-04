@@ -17,7 +17,11 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Player;
 
 import java.awt.*;
+import java.util.Arrays;
 import java.util.List;
+
+import static com.lu2000luk.fact.FactStore.getTeams;
+import static com.lu2000luk.fact.FactStore.setTeams;
 
 public class FactCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -74,13 +78,36 @@ public class FactCommand {
     }
 
     private static int createTeam(CommandContext<CommandSourceStack> command, String name) {
+        Player player = getPlayer(command);
+        if (player != null) {
+            FactTeam team = new FactTeam();
+            team.setName(name);
+            team.setLeader(player.getStringUUID());
+            team.setMembers(new String[]{player.getStringUUID()});
 
+            List<FactTeam> teamList = getTeams();
+            teamList.add(team);
+            setTeams(teamList.toArray(new FactTeam[0]));
+
+            player.sendSystemMessage(Component.literal("Fact >> Team " + name + " created. Automatically added you as leader."));
+        }
 
         return Command.SINGLE_SUCCESS;
     }
 
     private static int deleteTeam(CommandContext<CommandSourceStack> command, String name) {
-
+        Player player = getPlayer(command);
+        if (player != null) {
+            List<FactTeam> teamList = getTeams();
+            FactTeam team = Arrays.stream(teamList.toArray(new FactTeam[0])).filter(t -> t.getName().equals(name)).findFirst().orElse(null);
+            if (team != null) {
+                teamList.remove(team);
+                setTeams(teamList.toArray(new FactTeam[0]));
+                player.sendSystemMessage(Component.literal("Fact >> Team " + name + " deleted."));
+            } else {
+                player.sendSystemMessage(Component.literal("Fact >> Team " + name + " not found."));
+            }
+        }
 
         return Command.SINGLE_SUCCESS;
     }

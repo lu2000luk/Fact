@@ -1,5 +1,6 @@
 package com.lu2000luk.fact;
 
+import com.google.gson.Gson;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
@@ -33,6 +34,8 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
 
+import static com.lu2000luk.fact.FactStore.updateCache;
+
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(Fact.MODID)
 public class Fact
@@ -63,6 +66,7 @@ public class Fact
     public void onServerStarting(ServerStartingEvent event)
     {
         LOGGER.info("Fact >> Server starting");
+        updateCache();
     }
 
     // Block break event
@@ -98,4 +102,6 @@ public class Fact
 
         event.setCanceled(true);
     }
+
+    public static Gson gson = new Gson();
 }
