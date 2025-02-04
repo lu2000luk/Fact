@@ -16,12 +16,17 @@ public class FactStore {
     public static List<FactTeam> cachedTeams = null;
 
     public static File getFile() {
+        LogUtils.getLogger().info("CALL TRACE: GETTING FILE");
         Path gameDir = FMLPaths.CONFIGDIR.get();
         return new File(gameDir.toFile(), "fact_teams.json");
     }
 
     public static String readFile(File file) throws IOException {
-        file.createNewFile();
+        LogUtils.getLogger().info("CALL TRACE: READING FILE");
+        if (file.createNewFile()) {
+            LogUtils.getLogger().info("Created new file from READ: {}", file.getPath());
+            writeFile(file, "[]");
+        }
         try {
             return new String(Files.readAllBytes(Paths.get(file.getPath())));
         } catch (IOException e) {
@@ -31,7 +36,11 @@ public class FactStore {
     }
 
     public static void writeFile(File file, String content) throws IOException {
-        file.createNewFile();
+        LogUtils.getLogger().info("CALL TRACE: WRITING FILE {} with: {}", file.getPath(), content);
+        if (file.createNewFile()) {
+            LogUtils.getLogger().info("Created new file from WRITE: {}", file.getPath());
+            writeFile(file, "[]");
+        }
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(file.getPath()))) {
             writer.write(content);
         } catch (IOException e) {
@@ -49,7 +58,13 @@ public class FactStore {
 
     public static List<FactTeam> getTeams() {
         try {
-            return Arrays.asList(serialize(readFile(getFile())));
+            FactTeam[] teams = serialize(readFile(getFile()));
+            if (teams != null) {
+                return Arrays.asList(teams);
+            } else {
+                LogUtils.getLogger().error("Failed to get teams!");
+                return Arrays.asList(new FactTeam[0]);
+            }
         } catch (IOException e) {
             LogUtils.getLogger().error("Failed to get teams", e);
         }
