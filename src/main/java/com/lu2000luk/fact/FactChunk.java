@@ -11,6 +11,11 @@ public class FactChunk implements Serializable {
     private int x = 0;
     private int z = 0;
 
+    public FactChunk(int x, int z) {
+        this.x = x;
+        this.z = z;
+    }
+
     public String getOwner() {
         return owner;
     }
@@ -33,5 +38,13 @@ public class FactChunk implements Serializable {
 
     public void setZ(int z) {
         this.z = z;
+    }
+
+    public boolean isAdjacentTo(FactChunk other) {
+        return (this.x == other.x + 1 && this.z == other.z) ||
+                (this.x == other.x - 1 && this.z == other.z) ||
+                (this.x == other.x && this.z == other.z + 1) ||
+                (this.x == other.x && this.z == other.z - 1);
+
     }
 }

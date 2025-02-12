@@ -71,6 +71,7 @@ public class Fact
     public void onServerStarting(ServerStartingEvent event)
     {
         LOGGER.info("Fact >> Server starting");
+        FactDynmap.register();
         updateCache();
     }
 

@@ -23,6 +23,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import static com.lu2000luk.fact.FactDynmap.dynmapAPI;
+import static com.lu2000luk.fact.FactDynmap.reloadMarkers;
 import static com.lu2000luk.fact.FactStore.*;
 
 public class FactCommand {
@@ -74,10 +76,10 @@ public class FactCommand {
                 )
         );
     }
-
     private static Player getPlayer(CommandContext<CommandSourceStack> command) {
         return command.getSource().getEntity() instanceof Player player ? player : null;
     }
+
 
     private static FactTeam getPlayerTeam(Player player) {
         return Arrays.stream(cachedTeams.toArray(new FactTeam[0])).filter(t -> Arrays.asList(t.getMembers()).contains(player.getStringUUID())).findFirst().orElse(null);
@@ -213,13 +215,13 @@ public class FactCommand {
         LevelChunk chunk = player.getCommandSenderWorld().getChunkAt(player.blockPosition());
 
         List<FactChunk> chunkList = cachedChunks;
-        FactChunk newChunk = new FactChunk();
+        FactChunk newChunk = new FactChunk(chunk.getPos().x,chunk.getPos().z);
         newChunk.setOwner(name);
-        newChunk.setX(chunk.getPos().x);
-        newChunk.setZ(chunk.getPos().z);
 
         chunkList.add(newChunk);
         setChunks(chunkList);
+
+        reloadMarkers(dynmapAPI);
 
         return Command.SINGLE_SUCCESS;
     }
@@ -246,6 +248,8 @@ public class FactCommand {
         } else {
             player.sendSystemMessage(Component.literal("Fact >> No claimed chunk found at your position."));
         }
+
+        reloadMarkers(dynmapAPI);
 
         return Command.SINGLE_SUCCESS;
     }

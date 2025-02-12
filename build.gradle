@@ -90,7 +90,8 @@ minecraft {
 
         server {
             property 'forge.enabledGameTestNamespaces', mod_id
-            args '--nogui'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
         }
 
         // This run config launches GameTestServer and runs all registered gametests, then exits.
@@ -120,15 +121,11 @@ repositories {
             includeGroup "curse.maven"
         }
     }
-
-    maven {
-        url = "https://repo.mikeprimm.com/"
-    }
 }
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    compileOnly "us.dynmap:dynmap-api:3.7-beta-6"
+    implementation fg.deobf("curse.maven:dynmapforge-59433:4632236")
     implementation 'com.google.code.gson:gson:2.12.1'
 }
 
