@@ -16,6 +16,7 @@ import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.awt.*;
 import java.util.Arrays;
@@ -29,7 +30,7 @@ public class FactCommand {
         dispatcher.register(Commands.literal("fact")
                 .requires(cs -> cs.hasPermission(0))
                 .executes(FactCommand::execute)
-                .then(Commands.literal("setLeader")
+                .then(Commands.literal("set_leader")
                         .then(Commands.argument("player", EntityArgument.player())
                                 .executes(ctx -> setLeader(ctx, EntityArgument.getPlayer(ctx, "player")))
                         )
@@ -60,18 +61,18 @@ public class FactCommand {
                                 .then(Commands.literal("claim").then(Commands.argument("as", StringArgumentType.word())
                                         .executes(ctx -> claimChunk(ctx, StringArgumentType.getString(ctx, "as")))
                                 ))
-                                .then(Commands.literal("unclaim").then(Commands.argument("as", StringArgumentType.word())
-                                        .executes(ctx -> unclaimChunk(ctx, StringArgumentType.getString(ctx, "as")))
+                                .then(Commands.literal("unclaim")
+                                        .executes(FactCommand::unclaimChunk)
                                 ))
-                                .then(Commands.literal("join")
-                                        .then(Commands.argument("name", StringArgumentType.word())
-                                                .executes(ctx -> adminJoin(ctx, StringArgumentType.getString(ctx, "name")))
-                                        )
-                                )
-                                .then(Commands.literal("leave")
-                                        .executes(FactCommand::adminLeave)
-                                )
-                ));
+                .then(Commands.literal("join")
+                        .then(Commands.argument("name", StringArgumentType.word())
+                                .executes(ctx -> adminJoin(ctx, StringArgumentType.getString(ctx, "name")))
+                        )
+                )
+                .then(Commands.literal("leave")
+                        .executes(FactCommand::adminLeave)
+                )
+        );
     }
 
     private static Player getPlayer(CommandContext<CommandSourceStack> command) {
@@ -84,6 +85,17 @@ public class FactCommand {
 
     private static boolean isPlayerLeader(Player player, FactTeam team) {
         return team.getLeader().equals(player.getStringUUID());
+    }
+
+    private static FactTeam addAlly(FactTeam team, FactTeam otherTeam) {
+        team.setAllies(Arrays.copyOf(team.getAllies(), team.getAllies().length + 1));
+        team.getAllies()[team.getAllies().length - 1] = otherTeam.getName();
+        return team;
+    }
+
+    private static FactTeam removeAlly(FactTeam team, FactTeam otherTeam) {
+        team.setAllies(Arrays.stream(team.getAllies()).filter(a -> !a.equals(otherTeam.getName())).toArray(String[]::new));
+        return team;
     }
 
     private static int execute(CommandContext<CommandSourceStack> command) {
@@ -138,8 +150,6 @@ public class FactCommand {
     }
 
     private static int adminLeave(CommandContext<CommandSourceStack> command) {
-        // WARNING: Doesn't work lol (Also code is ass).
-
         Player player = getPlayer(command);
         if (player != null) {
             FactTeam team = getPlayerTeam(player);
@@ -150,11 +160,10 @@ public class FactCommand {
                 team.setMembers(Arrays.stream(team.getMembers()).filter(m -> !m.equals(player.getStringUUID())).toArray(String[]::new));
 
                 if (team.getLeader().equals(player.getStringUUID())) {
-                    team.setLeader("Unknown");
+                    team.setLeader(team.getMembers().length > 0 ? team.getMembers()[0] : "Unknown");
                 }
 
                 teamList.add(team);
-
                 setTeams(teamList);
 
                 player.sendSystemMessage(Component.literal("Fact >> Left team " + team.getName()));
@@ -195,13 +204,48 @@ public class FactCommand {
     }
 
     private static int claimChunk(CommandContext<CommandSourceStack> command, String name) {
+        Player player = getPlayer(command);
+        if (player == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> Can't identify your position."));
+            return Command.SINGLE_SUCCESS;
+        }
 
+        LevelChunk chunk = player.getCommandSenderWorld().getChunkAt(player.blockPosition());
+
+        List<FactChunk> chunkList = cachedChunks;
+        FactChunk newChunk = new FactChunk();
+        newChunk.setOwner(name);
+        newChunk.setX(chunk.getPos().x);
+        newChunk.setZ(chunk.getPos().z);
+
+        chunkList.add(newChunk);
+        setChunks(chunkList);
 
         return Command.SINGLE_SUCCESS;
     }
 
-    private static int unclaimChunk(CommandContext<CommandSourceStack> command, String name) {
+    private static int unclaimChunk(CommandContext<CommandSourceStack> command) {
+        Player player = getPlayer(command);
+        if (player == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> Can't identify your position."));
+            return Command.SINGLE_SUCCESS;
+        }
 
+        LevelChunk chunk = player.getCommandSenderWorld().getChunkAt(player.blockPosition());
+
+        List<FactChunk> chunkList = cachedChunks;
+        FactChunk chunkToRemove = chunkList.stream()
+                .filter(c -> c.getX() == chunk.getPos().x && c.getZ() == chunk.getPos().z)
+                .findFirst()
+                .orElse(null);
+
+        if (chunkToRemove != null) {
+            chunkList.remove(chunkToRemove);
+            setChunks(chunkList);
+            player.sendSystemMessage(Component.literal("Fact >> Chunk unclaimed."));
+        } else {
+            player.sendSystemMessage(Component.literal("Fact >> No claimed chunk found at your position."));
+        }
 
         return Command.SINGLE_SUCCESS;
     }
@@ -215,6 +259,16 @@ public class FactCommand {
         FactTeam team = getPlayerTeam(getPlayer(command));
         if (team != null) {
             if (isPlayerLeader(Objects.requireNonNull(getPlayer(command)), team)) {
+                if (player == null) {
+                    command.getSource().sendFailure(Component.literal("Fact >> Player not found."));
+                    return Command.SINGLE_SUCCESS;
+                }
+
+                if (!Arrays.stream(team.getMembers()).toList().contains(player.getStringUUID())) {
+                    command.getSource().sendFailure(Component.literal("Fact >> Player is not in your team."));
+                    return Command.SINGLE_SUCCESS;
+                }
+
                 team.setLeader(player.getStringUUID());
                 player.sendSystemMessage(Component.literal("Fact >> Made " + player.getName().getString() + " leader of " + team.getName()));
             } else {
@@ -233,10 +287,67 @@ public class FactCommand {
             return Command.SINGLE_SUCCESS;
         }
 
+        FactTeam team = getPlayerTeam(getPlayer(command));
+
+        if (team == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> You are not in a team."));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        if (!isPlayerLeader(Objects.requireNonNull(getPlayer(command)), team)) {
+            command.getSource().sendFailure(Component.literal("Fact >> You are not the leader of " + team.getName()));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        List<FactTeam> teamList = getTeams();
+        FactTeam otherTeam = Arrays.stream(teamList.toArray(new FactTeam[0])).filter(t -> t.getName().equals(name)).findFirst().orElse(null);
+
+        if (otherTeam == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> Team " + name + " not found."));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        teamList.remove(otherTeam);
+        teamList.add(addAlly(team, otherTeam));
+
+        setTeams(teamList);
+
+        command.getSource().sendSuccess(() -> Component.literal("Fact >> " + team.getName() + " is now allied with " + otherTeam.getName()), false);
         return Command.SINGLE_SUCCESS;
     }
 
     private static int unally(CommandContext<CommandSourceStack> command, String name) {
+        if (getPlayer(command) == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> Player not found."));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        FactTeam team = getPlayerTeam(getPlayer(command));
+
+        if (team == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> You are not in a team."));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        if (!isPlayerLeader(Objects.requireNonNull(getPlayer(command)), team)) {
+            command.getSource().sendFailure(Component.literal("Fact >> You are not the leader of " + team.getName()));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        List<FactTeam> teamList = getTeams();
+        FactTeam otherTeam = Arrays.stream(teamList.toArray(new FactTeam[0])).filter(t -> t.getName().equals(name)).findFirst().orElse(null);
+
+        if (otherTeam == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> Team " + name + " not found."));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        teamList.remove(otherTeam);
+        teamList.add(removeAlly(team, otherTeam));
+
+        setTeams(teamList);
+
+        command.getSource().sendSuccess(() -> Component.literal("Fact >> " + team.getName() + " is now allied with " + otherTeam.getName()), false);
 
         return Command.SINGLE_SUCCESS;
     }

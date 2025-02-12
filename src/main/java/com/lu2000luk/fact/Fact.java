@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodProperties;
@@ -14,6 +15,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -33,6 +35,9 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
+
+import java.util.Arrays;
+import java.util.List;
 
 import static com.lu2000luk.fact.FactStore.updateCache;
 
@@ -100,7 +105,41 @@ public class Fact
     {
         if (player.isCreative()) return;
 
+        Block block = event.getState().getBlock();
+        if (block == Blocks.AIR) return;
+
+        LevelChunk chunk = player.getCommandSenderWorld().getChunkAt(event.getPos());
+        List<FactChunk> chunkList = FactStore.getChunks();
+
+        FactChunk factChunk = chunkList.stream().filter(c -> c.getX() == chunk.getPos().x && c.getZ() == chunk.getPos().z).findFirst().orElse(null);
+        if (factChunk == null) return;
+
+        if (factChunk.getOwner().equals(player.getUUID().toString())) return;
+        if (isMemberOrAlly(player, factChunk)) return;
+
+        player.displayClientMessage(Component.literal("You can't do this!"), true);
         event.setCanceled(true);
+    }
+
+    private static boolean isMemberOrAlly(Player player, FactChunk chunk)
+    {
+        String ownerTeamName = chunk.getOwner();
+        String UUID = player.getUUID().toString();
+        List<FactTeam> teams = FactStore.cachedTeams;
+        FactTeam team = teams.stream().filter(t -> t.getName().equals(ownerTeamName)).findFirst().orElse(null);
+
+        if (team == null) return false;
+        if (Arrays.stream(team.getMembers()).toList().contains(UUID)) return true;
+
+        String[] allies = team.getAllies();
+        for (String ally : allies)
+        {
+            FactTeam allyTeam = teams.stream().filter(t -> t.getName().equals(ally)).findFirst().orElse(null);
+            if (allyTeam == null) continue;
+            if (Arrays.stream(allyTeam.getMembers()).toList().contains(UUID)) return true;
+        }
+
+        return false;
     }
 
     public static Gson gson = new Gson();

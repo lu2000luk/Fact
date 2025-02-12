@@ -16,10 +16,16 @@ import java.util.List;
 
 public class FactStore {
     public static List<FactTeam> cachedTeams = null;
+    public static List<FactChunk> cachedChunks = null;
 
-    public static File getFile() {
+    public static File getTeamsFile() {
         Path gameDir = FMLPaths.CONFIGDIR.get();
         return new File(gameDir.toFile(), "fact_teams.json");
+    }
+
+    public static File geChunkFile() {
+        Path gameDir = FMLPaths.CONFIGDIR.get();
+        return new File(gameDir.toFile(), "fact_chunks.json");
     }
 
     public static String readFile(File file) throws IOException {
@@ -47,17 +53,25 @@ public class FactStore {
         }
     }
 
-    public static List<FactTeam> serialize(String content) {
+    public static List<FactTeam> teamSerialize(String content) {
         return Fact.gson.fromJson(content, new TypeToken<List<FactTeam>>() {}.getType());
     }
 
-    public static String deserialize(List<FactTeam> teams) {
+    public static String teamDeserialize(List<FactTeam> teams) {
         return Fact.gson.toJson(teams);
+    }
+
+    public static List<FactChunk> chunkSerialize(String content) {
+        return Fact.gson.fromJson(content, new TypeToken<List<FactChunk>>() {}.getType());
+    }
+
+    public static String chunkDeserialize(List<FactChunk> chunks) {
+        return Fact.gson.toJson(chunks);
     }
 
     public static List<FactTeam> getTeams() {
         try {
-            FactTeam[] teams = serialize(readFile(getFile())).toArray(new FactTeam[0]);
+            FactTeam[] teams = teamSerialize(readFile(getTeamsFile())).toArray(new FactTeam[0]);
             return new ArrayList<>(Arrays.asList(teams));
         } catch (IOException e) {
             LogUtils.getLogger().error("Failed to get teams", e);
@@ -68,14 +82,42 @@ public class FactStore {
 
     public static void setTeams(List<FactTeam> teams) {
         try {
-            writeFile(getFile(), deserialize(teams));
-            updateCache();
+            writeFile(getTeamsFile(), teamDeserialize(teams));
+            updateCacheTeams();
         } catch (IOException e) {
             LogUtils.getLogger().error("Failed to set teams", e);
         }
     }
 
+    public static List<FactChunk> getChunks() {
+        try {
+            FactChunk[] chunks = chunkSerialize(readFile(geChunkFile())).toArray(new FactChunk[0]);
+            return new ArrayList<>(Arrays.asList(chunks));
+        } catch (IOException e) {
+            LogUtils.getLogger().error("Failed to get chunks", e);
+        }
+        return List.of();
+    }
+
+    public static void setChunks(List<FactChunk> chunks) {
+        try {
+            writeFile(geChunkFile(), chunkDeserialize(chunks));
+            updateCacheChunks();
+        } catch (IOException e) {
+            LogUtils.getLogger().error("Failed to set chunks", e);
+        }
+    }
+
     public static void updateCache() {
+        updateCacheTeams();
+        updateCacheChunks();
+    }
+
+    public static void updateCacheTeams() {
         cachedTeams = getTeams();
+    }
+
+    public static void updateCacheChunks() {
+        cachedChunks = getChunks();
     }
 }
