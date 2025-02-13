@@ -65,36 +65,38 @@ public class FactCommand {
                                 ))
                                 .then(Commands.literal("unclaim")
                                         .executes(FactCommand::unclaimChunk)
-                                ))
-                .then(Commands.literal("join")
-                        .then(Commands.argument("name", StringArgumentType.word())
-                                .executes(ctx -> adminJoin(ctx, StringArgumentType.getString(ctx, "name")))
-                        )
-                )
-                .then(Commands.literal("leave")
-                        .executes(FactCommand::adminLeave)
-                )
-                .then(Commands.literal("player")
-                        .then(Commands.literal("join")
-                                .then(Commands.argument("name", StringArgumentType.word())
-                                        .then(Commands.argument("player", EntityArgument.player())
-                                                .executes(ctx -> makePlayerJoin(ctx, StringArgumentType.getString(ctx, "name"), EntityArgument.getPlayer(ctx, "player")))
+                                )
+                                .then(Commands.literal("join")
+                                        .then(Commands.argument("name", StringArgumentType.word())
+                                                .executes(ctx -> adminJoin(ctx, StringArgumentType.getString(ctx, "name")))
                                         )
                                 )
-                        )
-                        .then(Commands.literal("leave")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .executes(ctx -> makePlayerLeave(ctx, EntityArgument.getPlayer(ctx, "player")))
+                                .then(Commands.literal("leave")
+                                        .executes(FactCommand::adminLeave)
                                 )
-                        )
-                )
-                .then(Commands.literal("set_leader")
-                        .then(Commands.argument("player", EntityArgument.player())
-                                .executes(ctx -> setLeader(ctx, EntityArgument.getPlayer(ctx, "player"), true))
-                        )
+                                .then(Commands.literal("player")
+                                        .then(Commands.literal("join")
+                                                .then(Commands.argument("name", StringArgumentType.word())
+                                                        .then(Commands.argument("player", EntityArgument.player())
+                                                                .executes(ctx -> makePlayerJoin(ctx, StringArgumentType.getString(ctx, "name"), EntityArgument.getPlayer(ctx, "player")))
+                                                        )
+                                                )
+                                        )
+                                        .then(Commands.literal("leave")
+                                                .then(Commands.argument("player", EntityArgument.player())
+                                                        .executes(ctx -> makePlayerLeave(ctx, EntityArgument.getPlayer(ctx, "player")))
+                                                )
+                                        )
+                                )
+                                .then(Commands.literal("set_leader")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .executes(ctx -> setLeader(ctx, EntityArgument.getPlayer(ctx, "player"), true))
+                                        )
+                                )
                 )
         );
     }
+
     private static Player getPlayer(CommandContext<CommandSourceStack> command) {
         return command.getSource().getEntity() instanceof Player player ? player : null;
     }
@@ -234,7 +236,7 @@ public class FactCommand {
         LevelChunk chunk = player.getCommandSenderWorld().getChunkAt(player.blockPosition());
 
         List<FactChunk> chunkList = cachedChunks;
-        FactChunk newChunk = new FactChunk(chunk.getPos().x,chunk.getPos().z);
+        FactChunk newChunk = new FactChunk(chunk.getPos().x, chunk.getPos().z);
         newChunk.setOwner(name);
 
         chunkList.add(newChunk);
