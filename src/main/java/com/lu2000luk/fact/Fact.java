@@ -69,10 +69,13 @@ public class Fact
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
     @SubscribeEvent
-    public void onServerStarting(ServerStartingEvent event)
-    {
+    public void onServerStarting(ServerStartingEvent event) {
         LOGGER.info("Fact >> Server starting");
-        FactDynmap.register();
+        try {
+            FactDynmap.register();
+        } catch (ClassNotFoundException e) {
+            LOGGER.error("Fact [Dynmap] >> Dynmap API not found");
+        }
         updateCache();
     }
 
