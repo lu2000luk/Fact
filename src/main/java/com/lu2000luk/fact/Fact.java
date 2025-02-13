@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.lu2000luk.fact.FactStore.cachedChunks;
 import static com.lu2000luk.fact.FactStore.updateCache;
 
 // The value here should match an entry in the META-INF/mods.toml file
@@ -110,7 +111,7 @@ public class Fact
         if (block == Blocks.AIR) return;
 
         LevelChunk chunk = player.getCommandSenderWorld().getChunkAt(event.getPos());
-        List<FactChunk> chunkList = FactStore.getChunks();
+        List<FactChunk> chunkList = cachedChunks;
 
         FactChunk factChunk = chunkList.stream().filter(c -> c.getX() == chunk.getPos().x && c.getZ() == chunk.getPos().z).findFirst().orElse(null);
         if (factChunk == null) return;

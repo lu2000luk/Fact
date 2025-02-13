@@ -81,6 +81,16 @@ public class FactStore {
 
 
     public static void setTeams(List<FactTeam> teams) {
+        for (int i = 0; i < teams.size(); i++) {
+            for (int j = i + 1; j < teams.size(); j++) {
+                if (teams.get(i).getName().equals(teams.get(j).getName())) {
+                    teams.remove(i);
+                    i--;
+                    break;
+                }
+            }
+        }
+
         try {
             writeFile(getTeamsFile(), teamDeserialize(teams));
             updateCacheTeams();

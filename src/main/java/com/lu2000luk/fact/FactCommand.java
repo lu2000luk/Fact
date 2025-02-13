@@ -22,6 +22,7 @@ import java.awt.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import static com.lu2000luk.fact.FactDynmap.dynmapAPI;
 import static com.lu2000luk.fact.FactDynmap.reloadMarkers;
@@ -180,9 +181,9 @@ public class FactCommand {
                 List<FactTeam> teamList = getTeams();
                 teamList.remove(team);
 
-                team.setMembers(Arrays.stream(team.getMembers()).filter(m -> !m.equals(player.getStringUUID())).toArray(String[]::new));
+                team.setMembers(Arrays.stream(team.getMembers()).filter(m -> !Objects.equals(m, player.getStringUUID())).toArray(String[]::new));
 
-                if (team.getLeader().equals(player.getStringUUID())) {
+                if (!Objects.equals(team.getLeader(), player.getStringUUID())) {
                     team.setLeader(team.getMembers().length > 0 ? team.getMembers()[0] : "Unknown");
                 }
 
@@ -420,9 +421,9 @@ public class FactCommand {
         List<FactTeam> teamList = getTeams();
         teamList.remove(team);
 
-        team.setMembers(Arrays.stream(team.getMembers()).filter(m -> !m.equals(player.getStringUUID())).toArray(String[]::new));
+        team.setMembers(Arrays.stream(team.getMembers()).filter(m -> !Objects.equals(m, player.getStringUUID())).toArray(String[]::new));
 
-        if (team.getLeader().equals(player.getStringUUID())) {
+        if (!Objects.equals(team.getLeader(), player.getStringUUID())) {
             team.setLeader(team.getMembers().length > 0 ? team.getMembers()[0] : "Unknown");
         }
 
