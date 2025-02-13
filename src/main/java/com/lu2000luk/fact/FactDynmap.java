@@ -24,21 +24,20 @@ public class FactDynmap {
     public static DynmapCommonAPI dynmapAPI;
 
     public static void register() {
-        if (!ModList.get().isLoaded("dynmap")) {
-            LOGGER.info("Fact >> This mod has compatibility with Dynmap, but Dynmap is not installed.");
-            return;
+        try {
+            DynmapCommonAPIListener.register(new DynmapCommonAPIListener() {
+                @Override
+                public void apiEnabled(DynmapCommonAPI api) {
+                    LOGGER.info("Fact >> Dynmap API enabled.");
+
+                    dynmapAPI = api;
+
+                    reloadMarkers(api);
+                }
+            });
+        } catch (Error e) {
+            LOGGER.error("Fact >> Dynmap API not found.");
         }
-
-        DynmapCommonAPIListener.register(new DynmapCommonAPIListener() {
-            @Override
-            public void apiEnabled(DynmapCommonAPI api) {
-                LOGGER.info("Fact >> Dynmap API enabled.");
-
-                dynmapAPI = api;
-
-                reloadMarkers(api);
-            }
-        });
     }
 
     public static void reloadMarkers(DynmapCommonAPI api) {
