@@ -17,6 +17,8 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Function;
 
+import static java.util.Collections.sort;
+
 public class FactDynmap {
     private static final Logger LOGGER = LogUtils.getLogger();
     public static DynmapCommonAPI dynmapAPI;
@@ -40,6 +42,10 @@ public class FactDynmap {
     }
 
     public static void reloadMarkers(DynmapCommonAPI api) {
+        if (api == null) {
+            return;
+        }
+
         List<FactTeam> teams = FactStore.getTeams();
         List<FactChunk> chunks = FactStore.getChunks();
 
@@ -90,48 +96,45 @@ public class FactDynmap {
             }
 
             for (List<FactChunk> chunkGroup : chunkGroups) {
-                List<FactChunk> perimeterChunks = getConvexHull(chunkGroup);
+                double[] pre_x = new double[chunkGroup.size() * 4];
+                double[] pre_z = new double[chunkGroup.size() * 4];
 
-                double[] x = new double[perimeterChunks.size() * 4];
-                double[] z = new double[perimeterChunks.size() * 4];
+                Arrays.fill(pre_x, Double.NaN);
+                Arrays.fill(pre_z, Double.NaN);
 
-                Set<String> uniquePositions = new HashSet<>();
-                List<Integer> indicesToRemove = new ArrayList<>();
+                LOGGER.info("Fact >> Chunk Group Arrays pre sizes -> X: " + pre_x.length + " | Z: " + pre_z.length);
 
-                for (int i = 0; i < perimeterChunks.size(); i++) {
-                    FactChunk chunk = perimeterChunks.get(i);
-                    String[] positions = new String[4];
-                    positions[0] = chunk.getX() * 16 + "," + chunk.getZ() * 16;
-                    positions[1] = chunk.getX() * 16 + 16 + "," + chunk.getZ() * 16 + 16;
-                    positions[2] = chunk.getX() * 16 + 16 + "," + chunk.getZ() * 16;
-                    positions[3] = chunk.getX() * 16 + "," + chunk.getZ() * 16 + 16;
+                for (int i = 0; i < chunkGroup.size(); i++) {
+                    FactChunk chunk = chunkGroup.get(i);
+                    int x = chunk.getX() * 16;
+                    int z = chunk.getZ() * 16;
 
-                    for (int j = 0; j < 4; j++) {
-                        if (!uniquePositions.add(positions[j])) {
-                            indicesToRemove.add(i + j * perimeterChunks.size());
-                        }
-                    }
+                    LOGGER.info("Fact >> Chunk pre -> X: " + x + " | Z: " + z + " | From: " + chunk.getX() + " " + chunk.getZ());
 
-                    x[i] = chunk.getX() * 16;
-                    z[i] = chunk.getZ() * 16;
+                    pre_x[i * 4] = x;
+                    pre_z[i * 4] = z;
 
-                    x[i + perimeterChunks.size()] = chunk.getX() * 16 + 16;
-                    z[i + perimeterChunks.size()] = chunk.getZ() * 16;
+                    pre_x[i * 4 + 1] = x + 16;
+                    pre_z[i * 4 + 1] = z;
 
-                    x[i + perimeterChunks.size() * 2] = chunk.getX() * 16 + 16;
-                    z[i + perimeterChunks.size() * 2] = chunk.getZ() * 16 + 16;
+                    pre_x[i * 4 + 2] = x + 16;
+                    pre_z[i * 4 + 2] = z + 16;
 
-                    x[i + perimeterChunks.size() * 3] = chunk.getX() * 16;
-                    z[i + perimeterChunks.size() * 3] = chunk.getZ() * 16 + 16;
+                    pre_x[i * 4 + 3] = x;
+                    pre_z[i * 4 + 3] = z + 16;
+
+                    LOGGER.info("Fact >> Chunk post -> X: " + Arrays.toString(pre_x) + " | Z: " + Arrays.toString(pre_z));
                 }
 
-                for (int index : indicesToRemove) {
-                    x[index] = Double.NaN;
-                    z[index] = Double.NaN;
-                }
+                LOGGER.info("Fact >> Chunk Group Arrays post sizes -> X: " + pre_x.length + " | Z: " + pre_z.length);
 
-                x = Arrays.stream(x).filter(Double::isFinite).toArray();
-                z = Arrays.stream(z).filter(Double::isFinite).toArray();
+                LOGGER.info("Fact >> Hulling chunk group of " + chunkGroup.size() + " chunks...");
+                OrthogonalConvexHull.Result hull = OrthogonalConvexHull.findOrthogonalConvexHull(pre_x, pre_z);
+
+                double[] x = hull.xCoordinates;
+                double[] z = hull.yCoordinates;
+
+                LOGGER.info("Fact >> Before hull: " + Arrays.toString(pre_x) + " " + Arrays.toString(pre_z) + " | After hull: " + Arrays.toString(x) + " " + Arrays.toString(z));
 
                 String teamName = team.getName();
                 int teamColor = getColorFromName(teamName);
@@ -168,42 +171,5 @@ public class FactDynmap {
         int b = hash & 0x0000FF;
 
         return (r << 16) | (g << 8) | b;
-    }
-
-    private static List<FactChunk> getConvexHull(List<FactChunk> points) {
-        if (points.size() <= 1) return points;
-        points.sort(Comparator.comparingInt(FactChunk::getX).thenComparingInt(FactChunk::getZ));
-        List<FactChunk> hull = new ArrayList<>();
-        for (int i = 0; i < 2; i++) {
-            int start = hull.size();
-            for (FactChunk point : points) {
-                while (hull.size() >= start + 2 && cross(hull.get(hull.size() - 2), hull.get(hull.size() - 1), point) <= 0) {
-                    hull.remove(hull.size() - 1);
-                }
-                hull.add(point);
-            }
-            hull.remove(hull.size() - 1);
-            Collections.reverse(points);
-        }
-        if (hull.size() == 2 && hull.get(0).equals(hull.get(1))) hull.remove(1);
-        return hull;
-    }
-
-    private static int cross(FactChunk o, FactChunk a, FactChunk b) {
-        return (a.getX() - o.getX()) * (b.getZ() - o.getZ()) - (a.getZ() - o.getZ()) * (b.getX() - o.getX());
-    }
-
-    private static boolean isVertexFacingOutside(double vertexX, double vertexZ, List<FactChunk> perimeterChunks) {
-        int n = perimeterChunks.size();
-        for (int i = 0; i < n; i++) {
-            FactChunk a = perimeterChunks.get(i);
-            FactChunk b = perimeterChunks.get((i + 1) % n);
-            FactChunk c = perimeterChunks.get((i + 2) % n);
-            int crossProduct = (b.getX() - a.getX()) * (c.getZ() - a.getZ()) - (b.getZ() - a.getZ()) * (c.getX() - a.getX());
-            if (crossProduct < 0) {
-                return true;
-            }
-        }
-        return false;
     }
 }

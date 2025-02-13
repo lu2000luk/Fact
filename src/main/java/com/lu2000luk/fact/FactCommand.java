@@ -34,7 +34,7 @@ public class FactCommand {
                 .executes(FactCommand::execute)
                 .then(Commands.literal("set_leader")
                         .then(Commands.argument("player", EntityArgument.player())
-                                .executes(ctx -> setLeader(ctx, EntityArgument.getPlayer(ctx, "player")))
+                                .executes(ctx -> setLeader(ctx, EntityArgument.getPlayer(ctx, "player"), false))
                         )
                 )
                 .then(Commands.literal("ally")
@@ -73,6 +73,25 @@ public class FactCommand {
                 )
                 .then(Commands.literal("leave")
                         .executes(FactCommand::adminLeave)
+                )
+                .then(Commands.literal("player")
+                        .then(Commands.literal("join")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .executes(ctx -> makePlayerJoin(ctx, StringArgumentType.getString(ctx, "name"), EntityArgument.getPlayer(ctx, "player")))
+                                        )
+                                )
+                        )
+                        .then(Commands.literal("leave")
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .executes(ctx -> makePlayerLeave(ctx, EntityArgument.getPlayer(ctx, "player")))
+                                )
+                        )
+                )
+                .then(Commands.literal("set_leader")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(ctx -> setLeader(ctx, EntityArgument.getPlayer(ctx, "player"), true))
+                        )
                 )
         );
     }
@@ -254,7 +273,7 @@ public class FactCommand {
         return Command.SINGLE_SUCCESS;
     }
 
-    private static int setLeader(CommandContext<CommandSourceStack> command, Player player) {
+    private static int setLeader(CommandContext<CommandSourceStack> command, Player player, boolean admin) {
         if (getPlayer(command) == null) {
             command.getSource().sendFailure(Component.literal("Fact >> Player not found."));
             return Command.SINGLE_SUCCESS;
@@ -262,7 +281,7 @@ public class FactCommand {
 
         FactTeam team = getPlayerTeam(getPlayer(command));
         if (team != null) {
-            if (isPlayerLeader(Objects.requireNonNull(getPlayer(command)), team)) {
+            if (isPlayerLeader(Objects.requireNonNull(getPlayer(command)), team) || admin) {
                 if (player == null) {
                     command.getSource().sendFailure(Component.literal("Fact >> Player not found."));
                     return Command.SINGLE_SUCCESS;
@@ -352,6 +371,63 @@ public class FactCommand {
         setTeams(teamList);
 
         command.getSource().sendSuccess(() -> Component.literal("Fact >> " + team.getName() + " is now allied with " + otherTeam.getName()), false);
+
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int makePlayerJoin(CommandContext<CommandSourceStack> command, String name, Player player) {
+        if (player == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> Player not found."));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        FactTeam team = getTeams().stream().filter(t -> t.getName().equals(name)).findFirst().orElse(null);
+
+        if (team == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> Team " + name + " not found."));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        List<FactTeam> teamList = getTeams();
+        teamList.remove(team);
+
+        team.setMembers(Arrays.copyOf(team.getMembers(), team.getMembers().length + 1));
+        team.getMembers()[team.getMembers().length - 1] = player.getStringUUID();
+
+        teamList.add(team);
+        setTeams(teamList);
+
+        player.sendSystemMessage(Component.literal("Fact >> Joined team " + team.getName()));
+
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int makePlayerLeave(CommandContext<CommandSourceStack> command, Player player) {
+        if (player == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> Player not found."));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        FactTeam team = getPlayerTeam(player);
+
+        if (team == null) {
+            command.getSource().sendFailure(Component.literal("Fact >> You are not in a team."));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        List<FactTeam> teamList = getTeams();
+        teamList.remove(team);
+
+        team.setMembers(Arrays.stream(team.getMembers()).filter(m -> !m.equals(player.getStringUUID())).toArray(String[]::new));
+
+        if (team.getLeader().equals(player.getStringUUID())) {
+            team.setLeader(team.getMembers().length > 0 ? team.getMembers()[0] : "Unknown");
+        }
+
+        teamList.add(team);
+        setTeams(teamList);
+
+        player.sendSystemMessage(Component.literal("Fact >> Left team " + team.getName()));
 
         return Command.SINGLE_SUCCESS;
     }
