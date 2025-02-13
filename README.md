@@ -29,3 +29,11 @@ Fact is only available for Minecraft Forge 1.20.1. We have no official support o
 - `/fact set_leader <player>` - Makes you the leader of the team you are in. (Only works if you are the leader of the team)
 - `/fact ally <name>` - Allows another team to mine/place blocks in your land
 - `/fact unally <name>` - Disallows another team to mine/place blocks in your land
+
+# Future plans
+
+- Admin UI for viewing claimed chunks
+- More mod integrations
+- API for accessing the stored data.
+- Worldedit-style bulk chunk claiming
+- Permissions and Config.
